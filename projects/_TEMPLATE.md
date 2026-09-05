@@ -17,3 +17,12 @@ last_synced: ""          # date this pointer file was last checked against the r
 
 One or two sentences, plain language, what this project is and why it
 exists. Nothing operational — that lives at `canonical_status_file`.
+
+---
+**Gotcha (found 2026-09-05):** the Notion sync workflow only fires on a
+push that touches `BACKLOG.md` or `projects/**.md`
+(`.github/workflows/notion-backlog-sync.yml`). Editing `STATE.md` alone —
+even to fix wording that was blocking a drop via the sync script's own-title safety net —
+does not re-run it. After a STATE.md-only fix, touch a file in that path
+set too, or the fix sits unsynced until some unrelated project change
+happens to push again.
