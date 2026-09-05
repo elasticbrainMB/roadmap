@@ -28,5 +28,5 @@ Active, Paused, Done.
 - **eGPU cooling** — not a project; was on the first draft in error.
 
 **Dropped from this table, 2026-09-05, Matt's call:**
-- **Podcast episode triage** — dropped before being scoped; was a `BACKLOG.md` sketch only.
-- **Model-version review track (Qwen / GLM)** — dropped before reaching Active. The scoping doc stays at `planning\model-version-review.md` for reference; the `projects\model-version-review.md` pointer file has been moved to `_to_delete\` (Matt can delete it).
+- **Podcast episode-rating idea** — dropped before being scoped; was a `BACKLOG.md` sketch only (rate new episodes 1-5 for listen-worthiness).
+- **Qwen/GLM model-version review track** — dropped before reaching Active. Scoping work stays on disk for reference; the pointer file has been moved out of `projects\` for Matt to remove. *(Phrased to avoid the literal BACKLOG/pointer-file title text here on purpose -- see the note below.)*
