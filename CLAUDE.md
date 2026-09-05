@@ -38,6 +38,9 @@ file.
 ## Where things live
 
 - `STATE.md` — human-facing index. A table plus short prose. Read this first.
+- `CONTEXT.md` — why this roadmap is documented publicly at all (the
+  beehiiv newsletter, the career goal behind it) and what that means for
+  how a finished project gets written up. Read once; not project-specific.
 - `PRINCIPLES.md` — standing rules, each one with which project it was
   learned on and why. Not a wishlist — only things already proven out.
 - `BACKLOG.md` — **Sketched ideas only.** No scope, no document, no folder.
