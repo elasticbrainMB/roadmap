@@ -5,10 +5,6 @@ Ideas with no scope yet. An entry leaves here the moment it becomes
 `projects\<name>.md` pointer file, and this entry is deleted, not archived.
 Nothing should ever be listed here and in `projects\` at the same time.
 
-## Podcast episode triage
-Rate new podcast episodes 1–5 on listen-worthiness from transcripts.
-Rubric not yet defined.
-
 ## Strava construction-route flagging
 Flag active construction on regular cycling routes for advance detour
 planning, rather than mid-ride rerouting.
