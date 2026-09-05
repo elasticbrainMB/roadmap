@@ -4,7 +4,9 @@ Copy this shape for every new `projects\*.md`. Keep the fields identical
 across every project — this is the one thing worth being boring about.
 
 ---
-name: ""
+name: ""                # if graduating from BACKLOG.md, reuse that
+                        # heading's exact text -- the Notion sync
+                        # matches rows on it
 status: ""              # one of: planned | active | paused | done
                         # sketched ideas live in BACKLOG.md, not here
 disk_location: ""        # empty string if none yet

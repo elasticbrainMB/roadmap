@@ -1,0 +1,20 @@
+name: Notion backlog sync
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'BACKLOG.md'
+      - 'projects/**.md'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync Sketched and Planned rows to Notion
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+        run: python3 scripts/notion_backlog_sync.py

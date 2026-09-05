@@ -59,6 +59,26 @@ Ideation for a Sketched idea happens as a chat or Cowork thread in this
 project. **The thread is the workspace; the written entry is the record.**
 Write it down as the thinking happens.
 
+## Notion sync
+
+`BACKLOG.md` and any `projects\*.md` with `status: planned` push to the
+shared Notion Projects database on every commit that touches them
+(`.github/workflows/notion-backlog-sync.yml`, `scripts/notion_backlog_sync.py`).
+Same mirror-not-source relationship as the rest of this project's Notion
+work: disk stays the truth, Notion is a window onto it.
+
+**This is why the title-locking rule matters in practice, not just in
+principle.** The sync finds a Notion row by exact title match. If an idea
+graduates and its pointer file's `name` doesn't reuse the BACKLOG.md
+heading text exactly, the sync can't tell it's the same idea -- it creates
+a second row instead of updating the first.
+
+If an idea skips the pointer-file stage entirely (goes straight to Active
+with no folder yet, the way a pure n8n workflow can) its Notion row won't
+get auto-updated by this sync, and won't get auto-dropped either as long
+as it's still named somewhere in `STATE.md` -- that case stays a manual
+correction, same as it was before this sync existed.
+
 ## Execution discipline
 
 Lighter than caddy's, because there's less at stake here — but the shape
