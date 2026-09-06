@@ -6,6 +6,7 @@ on:
     paths:
       - 'BACKLOG.md'
       - 'projects/**.md'
+  workflow_dispatch: {}
 
 jobs:
   sync:

@@ -1,0 +1,23 @@
+name: Notion manual fix 2026-09-06
+
+# One-off, manually-triggered only -- never fires on push. Runs
+# scripts/notion-manual-fixes-2026-09-06.py, which archives the stale
+# duplicate "infra-watch" Planned row and marks "Cycling-day rating" Done.
+# Safe to leave in place: the script asserts the exact shape it expects
+# and aborts without changing anything if a re-run finds the database
+# already fixed (or different from what it expects).
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run one-off manual fixes
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+        run: python3 scripts/notion-manual-fixes-2026-09-06.py
