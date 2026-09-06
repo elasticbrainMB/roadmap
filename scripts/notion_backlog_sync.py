@@ -1,25 +1,49 @@
 #!/usr/bin/env python3
 """
-Sync BACKLOG.md (Sketched ideas) and projects/*.md (status: planned) into
-the shared Notion Projects database.
+Sync BACKLOG.md (Sketched ideas) and projects/*.md (every status) into the
+shared Notion Projects database.
 
-Full reconciliation on every run: reads the current state of both files,
-compares it against every Notion row this sync owns (Status = Sketched or
-Planned), and:
-  - creates a Notion row for any current Sketched/Planned title that
-    doesn't have one yet
-  - updates the Status/description/date on rows that already exist
-  - marks a row Dropped if its title is no longer in BACKLOG.md or in a
-    Planned projects/*.md file -- UNLESS that title still appears
-    somewhere in STATE.md, which is the safety net for an idea that
-    graduated straight past the pointer-file stage (some active projects,
-    like an n8n-only workflow, never get a projects/*.md file at all).
-    A false "Dropped" is worse than a stale label, so this only drops
-    a title that is missing everywhere.
+Two different jobs, split by which fields each one is allowed to touch:
 
-Never touches rows whose current Notion Status is Active, Paused, Done,
-or already Dropped -- those belong to the per-project hooks and to
-Matt's own STATE.md edits, not to this script.
+1. Sketched (BACKLOG.md) and Planned (projects/*.md with status: planned) --
+   this script fully owns these rows. Full reconciliation on every run:
+   reads the current state of both sources, compares it against every
+   Notion row this sync owns (Status = Sketched or Planned), and:
+     - creates a Notion row for any current Sketched/Planned title that
+       doesn't have one yet (Description + Status + a "Added to roadmap
+       on <date>" Latest Update)
+     - moves a row's Status if the title's status changed on disk (e.g.
+       Sketched -> Planned), stamping Latest Update as "Moved to <status>
+       on <date>" -- but leaves Latest Update (and Last Updated) alone
+       when nothing actually changed, so "latest" stays true instead of
+       bumping to today on every unrelated push
+     - marks a row Dropped if its title is no longer in BACKLOG.md or in
+       a Planned projects/*.md file -- UNLESS that title still appears
+       somewhere in STATE.md, which is the safety net for an idea that
+       graduated straight past the pointer-file stage (some active
+       projects, like an n8n-only workflow, never get a projects/*.md
+       file at all). A false "Dropped" is worse than a stale label, so
+       this only drops a title that is missing everywhere.
+
+2. Every other projects/*.md file (status: active | paused | done) --
+   this script only ever seeds that row's Description, and only if it's
+   currently blank. Status, Last Updated, Latest Update, and Source for
+   those rows belong to that project's own per-repo GitHub Actions hook
+   (or to Matt's own manual STATE.md-driven fixes) -- this script never
+   touches them.
+
+Description itself is seed-once, hands-off, for every row regardless of
+which job created it: written once when a Notion row's Description is
+still blank, then left alone for good so Matt can polish the wording
+directly in Notion without a later disk edit clobbering it. Keep
+BACKLOG.md entries and pointer-file bodies to one or two plain-language
+sentences -- that text becomes this column verbatim the first time a row
+is created or first synced.
+
+Never touches Status/Last Updated/Latest Update/Source on rows whose
+current Notion Status is Active, Paused, Done, or already Dropped --
+those belong to the per-project hooks and to Matt's own STATE.md edits,
+not to this script.
 
 Depends on a convention this sync requires going forward: when an idea
 graduates from BACKLOG.md to a projects/*.md pointer file, the pointer
@@ -40,7 +64,14 @@ NOTION_DATABASE_ID = os.environ.get("NOTION_DATABASE_ID", "")
 NOTION_VERSION = "2022-06-28"
 
 MANAGED_STATUSES = {"Sketched", "Planned"}
+UNMANAGED_STATUSES = {"active", "paused", "done"}
 MAX_TEXT = 500
+
+
+def today_human(dt=None):
+    """'September 6, 2026' -- full month name, no leading zero on the day."""
+    dt = dt or datetime.datetime.now(datetime.timezone.utc)
+    return f"{dt.strftime('%B')} {dt.day}, {dt.year}"
 
 
 def notion_request(method, path, body=None):
@@ -103,10 +134,10 @@ def parse_frontmatter(text):
     return fields, description
 
 
-def parse_planned_projects(dir_path):
-    """Returns {title: description} for every projects/*.md file whose
-    frontmatter status is 'planned'. Title is the frontmatter 'name'
-    field verbatim."""
+def parse_all_pointer_files(dir_path):
+    """Returns {title: {"status": status_lower, "description": text}} for
+    every projects/*.md file, regardless of status. Title is the
+    frontmatter 'name' field verbatim."""
     items = {}
     if not os.path.isdir(dir_path):
         return items
@@ -115,16 +146,17 @@ def parse_planned_projects(dir_path):
             continue
         text = open(os.path.join(dir_path, fname), encoding="utf-8").read()
         fields, description = parse_frontmatter(text)
-        if fields.get("status", "").lower() == "planned":
-            title = fields.get("name", "").strip()
-            if title:
-                items[title] = description
+        title = fields.get("name", "").strip()
+        status = fields.get("status", "").strip().lower()
+        if title:
+            items[title] = {"status": status, "description": description}
     return items
 
 
 def fetch_all_rows():
-    """Returns {title: {"id": page_id, "status": status_name_or_None}}
-    for every row currently in the database."""
+    """Returns {title: {"id": page_id, "status": status_name_or_None,
+    "description": current_description_text}} for every row currently in
+    the database."""
     rows = {}
     body = {"page_size": 100}
     while True:
@@ -137,8 +169,14 @@ def fetch_all_rows():
             title = "".join(t.get("plain_text", "") for t in title_prop).strip()
             status_prop = props.get("Status", {}).get("select")
             status_name = status_prop["name"] if status_prop else None
+            desc_prop = props.get("Description", {}).get("rich_text", [])
+            description = "".join(t.get("plain_text", "") for t in desc_prop).strip()
             if title:
-                rows[title] = {"id": page["id"], "status": status_name}
+                rows[title] = {
+                    "id": page["id"],
+                    "status": status_name,
+                    "description": description,
+                }
         if result.get("has_more"):
             body["start_cursor"] = result["next_cursor"]
         else:
@@ -146,27 +184,67 @@ def fetch_all_rows():
     return rows
 
 
-def upsert(existing_rows, title, status_name, description, today):
-    props = {
-        "Status": {"select": {"name": status_name}},
-        "Last Updated": {"date": {"start": today}},
-        "Latest Update": {
-            "rich_text": [{"text": {"content": description[:MAX_TEXT]}}]
-        },
-        "Source": {"select": {"name": "GitHub Hook"}},
-    }
-    if title in existing_rows:
-        page_id = existing_rows[title]["id"]
-        notion_request("PATCH", f"/pages/{page_id}", {"properties": props})
-        print(f"updated: {title} -> {status_name}")
-    else:
-        props["Project"] = {"title": [{"text": {"content": title}}]}
+def upsert_managed(existing_rows, title, status_name, description, today):
+    """Full owner of Sketched/Planned rows: creates, moves status, seeds
+    Description once. Leaves everything alone when nothing changed."""
+    if title not in existing_rows:
+        props = {
+            "Project": {"title": [{"text": {"content": title}}]},
+            "Status": {"select": {"name": status_name}},
+            "Last Updated": {"date": {"start": today}},
+            "Latest Update": {
+                "rich_text": [{"text": {"content": f"Added to roadmap on {today_human()}."}}]
+            },
+            "Source": {"select": {"name": "GitHub Hook"}},
+            "Description": {
+                "rich_text": [{"text": {"content": description[:MAX_TEXT]}}]
+            },
+        }
         notion_request(
             "POST",
             "/pages",
             {"parent": {"database_id": NOTION_DATABASE_ID}, "properties": props},
         )
         print(f"created: {title} -> {status_name}")
+        return
+
+    row = existing_rows[title]
+    props = {}
+    if row["status"] != status_name:
+        props["Status"] = {"select": {"name": status_name}}
+        props["Last Updated"] = {"date": {"start": today}}
+        props["Latest Update"] = {
+            "rich_text": [{"text": {"content": f"Moved to {status_name} on {today_human()}."}}]
+        }
+    if not row["description"]:
+        props["Description"] = {
+            "rich_text": [{"text": {"content": description[:MAX_TEXT]}}]
+        }
+    if not props:
+        print(f"unchanged: {title}")
+        return
+    notion_request("PATCH", f"/pages/{row['id']}", {"properties": props})
+    print(f"updated: {title} -> {status_name} ({', '.join(props)})")
+
+
+def seed_description_only(existing_rows, title, description):
+    """For active/paused/done pointer files: never touches Status, dates,
+    or Source. Only fills Description, and only if currently blank."""
+    row = existing_rows.get(title)
+    if not row:
+        # No Notion row yet for this project -- that row gets created by
+        # the per-project hook or a manual seed, not by this script.
+        return
+    if row["description"]:
+        return
+    if not description:
+        return
+    notion_request(
+        "PATCH",
+        f"/pages/{row['id']}",
+        {"properties": {"Description": {"rich_text": [{"text": {"content": description[:MAX_TEXT]}}]}}},
+    )
+    print(f"seeded description only: {title}")
 
 
 def mark_dropped(page_id, title, today):
@@ -177,6 +255,9 @@ def mark_dropped(page_id, title, today):
             "properties": {
                 "Status": {"select": {"name": "Dropped"}},
                 "Last Updated": {"date": {"start": today}},
+                "Latest Update": {
+                    "rich_text": [{"text": {"content": f"Dropped from roadmap on {today_human()}."}}]
+                },
             }
         },
     )
@@ -191,7 +272,11 @@ def main():
     today = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
 
     sketched = parse_backlog("BACKLOG.md")
-    planned = parse_planned_projects("projects")
+    all_pointers = parse_all_pointer_files("projects")
+    planned = {t: v["description"] for t, v in all_pointers.items() if v["status"] == "planned"}
+    unmanaged = {
+        t: v["description"] for t, v in all_pointers.items() if v["status"] in UNMANAGED_STATUSES
+    }
     state_text = (
         open("STATE.md", encoding="utf-8").read() if os.path.exists("STATE.md") else ""
     )
@@ -217,14 +302,19 @@ def main():
             continue
         mark_dropped(info["id"], title, today)
         dropped += 1
+        existing_rows[title]["status"] = "Dropped"  # keep local view consistent
 
     for title, description in sketched.items():
-        upsert(existing_rows, title, "Sketched", description, today)
+        upsert_managed(existing_rows, title, "Sketched", description, today)
     for title, description in planned.items():
-        upsert(existing_rows, title, "Planned", description, today)
+        upsert_managed(existing_rows, title, "Planned", description, today)
+
+    for title, description in unmanaged.items():
+        seed_description_only(existing_rows, title, description)
 
     print(
         f"Sync complete: {len(sketched)} sketched, {len(planned)} planned, "
+        f"{len(unmanaged)} active/paused/done pointer files checked for description, "
         f"{dropped} dropped."
     )
 

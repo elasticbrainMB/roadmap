@@ -82,6 +82,30 @@ get auto-updated by this sync, and won't get auto-dropped either as long
 as it's still named somewhere in `STATE.md` -- that case stays a manual
 correction, same as it was before this sync existed.
 
+## Notion's Description column
+
+The Projects database has a `Description` column separate from `Latest
+Update` -- Description is the static "what is this" (one or two
+sentences); Latest Update is the dated "what just happened." Description
+is filled in exactly once, from whatever's on disk, then left alone by
+every script for good:
+
+- Sketched (`BACKLOG.md`) and Planned (`projects\*.md`) rows: seeded from
+  that entry's own text the first time the sync creates or first touches
+  the row.
+- Active, Paused, and Done `projects\*.md` rows: `notion_backlog_sync.py`
+  also reads these now (not just Planned ones), but only to fill
+  Description if it's still blank -- it never touches Status, Last
+  Updated, Latest Update, or Source on these rows. Those four stay owned
+  by that project's own per-repo `notion-status.yml` hook, or by Matt's
+  manual STATE.md-driven fixes.
+
+Because a row's Description is never overwritten once set, Matt can
+freely rewrite it straight in Notion -- a later edit to the same
+pointer file or BACKLOG.md entry won't clobber it. If a description
+genuinely needs to be re-derived from disk, clear the Notion field by
+hand first; the next sync run will re-seed it.
+
 ## Execution discipline
 
 Lighter than caddy's, because there's less at stake here — but the shape

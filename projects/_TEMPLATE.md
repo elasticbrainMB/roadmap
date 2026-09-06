@@ -18,6 +18,14 @@ last_synced: ""          # date this pointer file was last checked against the r
 One or two sentences, plain language, what this project is and why it
 exists. Nothing operational — that lives at `canonical_status_file`.
 
+**This text becomes the Description column in the Notion status
+dashboard verbatim, the first time this project is synced there.**
+After that first sync it's left alone by every script -- Matt can
+polish the wording directly in Notion, or edit it here, without
+either side clobbering the other. Keep it to one or two sentences;
+that's the whole point of it living separately from
+`canonical_status_file`.
+
 ---
 **Gotcha (found 2026-09-05):** the Notion sync workflow only fires on a
 push that touches `BACKLOG.md` or `projects/**.md`
