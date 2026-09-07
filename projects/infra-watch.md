@@ -1,5 +1,5 @@
 ---
-name: "infra-watch"
+name: "Infra-Watch"
 status: "active"
 disk_location: "C:\automation\infra-watch"
 claude_project: "Infra-Watch"

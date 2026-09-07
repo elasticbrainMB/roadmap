@@ -1,5 +1,5 @@
 ---
-name: "project-status"
+name: "Project Status"
 status: "active"
 disk_location: "C:\automation\project-status"
 claude_project: "Project Status"
