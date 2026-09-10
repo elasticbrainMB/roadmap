@@ -4,7 +4,7 @@ status: "active"
 disk_location: "C:\automation\infra-watch"
 claude_project: "Infra-Watch"
 canonical_status_file: "C:\automation\infra-watch\STATE.md"
-last_synced: "2026-09-04"
+last_synced: "2026-09-10"
 ---
 
 Read-only update tracker for Matt's self-hosted infrastructure — n8n, Open
