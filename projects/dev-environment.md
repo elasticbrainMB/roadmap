@@ -1,13 +1,14 @@
 ---
 name: "dev-environment"
-status: "planned"
-disk_location: ""
+status: "active"
+disk_location: "C:\automation\dev-environment"
 claude_project: ""
-canonical_status_file: "C:\automation\roadmap\planning\dev-environment.md"
-last_synced: "2026-09-04"
+canonical_status_file: "C:\automation\dev-environment\STATE.md"
+last_synced: "2026-09-10"
 ---
 
 A shared foundation for running work across projects rather than rebuilding
-one per project, and the queued runner that would let agentic work start
-without Matt sitting at the keyboard. Scoped 2026-09-04; no folder yet — the
-planning document is the canonical status file until one exists.
+one per project, with OpenClaw 2.0 as the place work is started, watched,
+approved and reported — so agentic work can run overnight and during the
+workday without Matt at the keyboard. Graduated from Planned to Active on
+2026-09-10; the build plan and full status live at the canonical status file.
